@@ -59,23 +59,23 @@ func TestInvalidServer1sec(t *testing.T) {
 func TestReapeatChecks(t *testing.T) {
 	conf := Configuration{
 		ServerURL:    "https://github.com", // no trailing slash - it will be added ...
-		OfflineLimit: 4 * time.Second,
-		AutoRepeat:   1 * time.Second}
+		OfflineLimit: 1 * time.Second,
+		AutoRepeat:   300 * time.Millisecond}
 
 	c := New(conf)
 	if c.Locked() {
 		t.FailNow()
 	}
-	time.Sleep(10 * time.Second)
+	time.Sleep(3 * time.Second)
 	if c.Locked() {
 		t.FailNow()
 	}
-	c.Close() // closing will lock the Client immediately.
+	c.Close() // closing should lock the Client immediately.
 	if !c.Locked() {
 		t.FailNow()
 	}
-	time.Sleep(5 * time.Second)
-	fmt.Println("Closed successful")
+	time.Sleep(3 * time.Second)
+	fmt.Println("Closed successful.")
 	if !c.Locked() {
 		t.FailNow()
 	}

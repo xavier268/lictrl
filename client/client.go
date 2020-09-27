@@ -22,7 +22,7 @@ type Client struct {
 	license   string        // license identification string
 	surl      *url.URL      // server url entry point
 	ticker    *time.Ticker  // Ticker to trigger automatic checks. minLimit does not apply here.
-	done      chan bool     // signal end of process to all concurrent goroutines
+	done      chan bool     // signal end of process to all concurrent goroutines by closing this channel. Never send data to it !
 }
 
 // New creates a new Client, using the provided configuration.
@@ -57,7 +57,7 @@ func (c *Client) Close() error {
 	if c.ticker != nil {
 		c.ticker.Stop()
 	}
-	c.done <- true
+	close(c.done)
 	c.locked = true
 	return nil
 }
@@ -68,7 +68,7 @@ func (c *Client) Close() error {
 func (c *Client) repeatChecks() {
 	for {
 		select {
-		case <-c.done:
+		case <-c.done: // When the channel is closed, this will receive the zero-value, false.
 			fmt.Println("Close requested !")
 			return
 		case tt := <-c.ticker.C:
