@@ -11,21 +11,18 @@ import (
 
 // Client is the main object to manage the license-related permissions
 type Client struct {
-	start  time.Time  // time when Client was first constructed
-	locked bool       // if set, application is definitively locked
-	rnd    *rand.Rand // random generator for client
-	ssid   int        // unique session id
-	e      error      // last error recorded
-
+	start     time.Time     // time when Client was first constructed
+	locked    bool          // if set, application is definitively locked
+	rnd       *rand.Rand    // random generator for client
+	ssid      int           // unique session id
+	lastError error         // last error recorded
 	lastCheck time.Time     // the last successful check
 	offLimit  time.Duration // max duration we can stay offline without a successful check
-
-	license string   // license identification string
-	surl    *url.URL // server url entry point
-
-	ticker *time.Ticker // Ticker to trigger automatic checks.
-
-	done chan bool // signal end of process to all concurrent goroutines
+	minLimit  time.Duration // minimal time between 2 actual server requests, internally set to 1/3 of offLimit
+	license   string        // license identification string
+	surl      *url.URL      // server url entry point
+	ticker    *time.Ticker  // Ticker to trigger automatic checks. minLimit does not apply here.
+	done      chan bool     // signal end of process to all concurrent goroutines
 }
 
 // New creates a new Client, using the provided configuration.
@@ -35,13 +32,14 @@ func New(conf Configuration) *Client {
 	c.start = time.Now()
 	c.lastCheck = c.start
 	c.offLimit = conf.OfflineLimit
+	c.minLimit = c.offLimit / 3
 
 	c.locked = false
 	c.rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 	c.ssid = c.rnd.Int()
 
 	c.license = url.PathEscape(conf.License)
-	c.surl, c.e = url.Parse(conf.ServerURL)
+	c.surl, c.lastError = url.Parse(conf.ServerURL)
 	c.surl.Path = strings.Join([]string{c.surl.Path, c.license}, "/")
 
 	c.done = make(chan bool)
@@ -53,7 +51,7 @@ func New(conf Configuration) *Client {
 	return c
 }
 
-// Close release all Client ressources.
+// Close release all Client ressources and locks client.
 // All subsequent checks will fail.
 func (c *Client) Close() error {
 	if c.ticker != nil {
@@ -81,31 +79,40 @@ func (c *Client) repeatChecks() {
 	}
 }
 
-func (c *Client) String() string {
-	return fmt.Sprintf("Client dump :\n============\nstarted:\t%v\nlast check:\t%v\noffline max:\t%v\n"+
-		"locked:\t\t%v\nssid:\t\t%v\nerror:\t\t%v\nlicense:\t%s\nserver url:\t%v\n",
-		c.start, c.lastCheck, c.offLimit,
-		c.locked, c.ssid, c.e, c.license, c.surl)
+// Locked verify if Client was locked.
+// No actual additionnal check is done.
+func (c *Client) Locked() bool {
+	return c.locked
 }
 
-// Check the validity of the license, returning error if invalid.
+// Check the validity of the license, asynchroneously.
+// If already locked, return immediately.
 // What happens exactly depends on the configuration that was passed upon creation.
-func (c *Client) Check() error {
+func (c *Client) Check() {
 	if c.locked {
-		return fmt.Errorf("Application was locked, (%v)", c.e)
+		return
 	}
-	if c.e != nil {
-		return c.e
+	if c.lastError != nil {
+		c.locked = true
+		return
 	}
 
-	// add more checks here ...
+	// do the actual asynchroneous check, only if enough time has elapsed
+	if time.Now().After(c.lastCheck.Add(c.minLimit)) {
+		go c.checkServer()
+	}
 
-	return nil
 }
 
 // checkServer sends the Get query to the server and verify response is valid.
+// it should never be called synchroneously to avoid freezing the application.
 func (c *Client) checkServer() {
 	resp, err := http.Get(c.surl.String())
+	if resp != nil {
+		fmt.Printf("Server responded : %s\n", resp.Status)
+	} else {
+		fmt.Printf("Server error : %v\n", err)
+	}
 
 	if err != nil || resp.StatusCode != http.StatusOK {
 		if c.isOfflineOk() {
@@ -113,7 +120,8 @@ func (c *Client) checkServer() {
 			return
 		}
 		// error beyond acceptable limit !
-		// Client was locked already by offlimit check.
+		// Client was locked already by offlimit check, but let's be safe ...
+		c.locked = true
 		return
 	}
 	// additionnal checks here ...
@@ -129,9 +137,8 @@ func (c *Client) isOfflineOk() bool {
 
 	if time.Now().After(c.lastCheck.Add(c.offLimit)) {
 		c.locked = true
-		c.e = fmt.Errorf("Exceeded timeout without being able to connect to authetication server")
+		c.lastError = fmt.Errorf("Exceeded timeout without being able to connect to authetication server")
 		return false
 	}
-
 	return true
 }
