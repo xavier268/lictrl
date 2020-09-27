@@ -55,6 +55,28 @@ func TestInvalidServer1sec(t *testing.T) {
 		t.FailNow()
 	}
 }
+func TestValidServer1(t *testing.T) {
+	conf := Configuration{
+		ServerURL: "https://github.com", // no trailing slash - it will be added ...
+	}
+
+	c := New(conf)
+	defer c.Close()
+	if c.Locked() {
+		t.Fatalf("Should NOT be locked ?\n%v\n", c)
+		t.FailNow()
+	}
+	c.checkServer()
+	if c.Locked() {
+		t.Fatalf("Should NOT be locked ?\n%v\n", c)
+		t.FailNow()
+	}
+	time.Sleep(time.Second) // enough time to get to the server ...
+	if c.Locked() {
+		t.Fatalf("Should NOT be locked ?\n%v\n", c)
+		t.FailNow()
+	}
+}
 
 func TestReapeatChecks(t *testing.T) {
 	conf := Configuration{
