@@ -1,4 +1,4 @@
-package main
+package mockserver
 
 import (
 	"fmt"
@@ -7,16 +7,8 @@ import (
 	"time"
 )
 
-// Main starts the mock server
-func main() {
-
-	fmt.Println("Starting mock server")
-
-	New(":8080").ListenAndServe()
-
-}
-
-// New constructs and start a mock server
+// New constructs a mock server.
+// Start it by calling LitenAndServe() and then Close() it of send a /quit request.
 func New(addr string) *http.Server {
 	svr := &http.Server{}
 	svr.Addr = ":8080"

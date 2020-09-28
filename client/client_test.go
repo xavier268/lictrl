@@ -130,7 +130,7 @@ func TestReapeatChecks(t *testing.T) {
 		t.FailNow()
 	}
 	time.Sleep(3 * time.Second)
-	fmt.Println("Closed successful.")
+	fmt.Println("Close successful.")
 	if !c.Locked() {
 		t.FailNow()
 	}
