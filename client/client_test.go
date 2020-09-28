@@ -106,12 +106,13 @@ func TestValidServer1(t *testing.T) {
 
 func TestReapeatChecks(t *testing.T) {
 
+	// Constructing and launching mock server
 	addr := "http://127.0.0.1:8080" // no trailing slash - it will be added ...
-
 	srv := mockserver.New(addr)
 	go srv.ListenAndServe()
 	defer srv.Close()
 
+	// Actual client test
 	conf := Configuration{
 		ServerURL:    addr,
 		OfflineLimit: 1 * time.Second,
