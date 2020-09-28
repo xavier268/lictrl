@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"mockserver"
 	"testing"
 	"time"
 )
@@ -103,8 +104,15 @@ func TestValidServer1(t *testing.T) {
 }
 
 func TestReapeatChecks(t *testing.T) {
+
+	addr := "http://127.0.0.1:8080" // no trailing slash - it will be added ...
+
+	srv := mockserver.New(addr)
+	go srv.ListenAndServe()
+	defer srv.Close()
+
 	conf := Configuration{
-		ServerURL:    "https://github.com", // no trailing slash - it will be added ...
+		ServerURL:    addr,
 		OfflineLimit: 1 * time.Second,
 		AutoRepeat:   300 * time.Millisecond}
 
@@ -125,4 +133,5 @@ func TestReapeatChecks(t *testing.T) {
 	if !c.Locked() {
 		t.FailNow()
 	}
+
 }
