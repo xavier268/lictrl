@@ -2,9 +2,10 @@ package client
 
 import (
 	"fmt"
-	"mockserver"
 	"testing"
 	"time"
+
+	"github.com/xavier268/lictrl/mockserver"
 )
 
 func (c *Client) String() string {
