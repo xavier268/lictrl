@@ -23,7 +23,7 @@ func TestConstructClient(t *testing.T) {
 
 	c := New(conf)
 
-	if c.surl.String() != "https://testerver.com/something/LI%252F..%252F..%252F..%252FLI" {
+	if c.surl != "https://testerver.com/something/LI%2F..%2F..%2F..%2FLI" {
 		t.Fatalf("Unexpected client server url\n%v\n", c)
 	}
 
@@ -107,14 +107,14 @@ func TestValidServer1(t *testing.T) {
 func TestReapeatChecks(t *testing.T) {
 
 	// Constructing and launching mock server
-	addr := "http://127.0.0.1:8080" // no trailing slash - it will be added ...
-	srv := mockserver.New(addr)
+	port := 8282 // no trailing slash - it will be added ...
+	srv := mockserver.New(port)
 	go srv.ListenAndServe()
 	defer srv.Close()
 
 	// Actual client test
 	conf := Configuration{
-		ServerURL:    addr,
+		ServerURL:    fmt.Sprintf("http://:%d", port),
 		OfflineLimit: 1 * time.Second,
 		AutoRepeat:   300 * time.Millisecond}
 

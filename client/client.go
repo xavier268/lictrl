@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -20,7 +19,7 @@ type Client struct {
 	offLimit  time.Duration // max duration we can stay offline without a successful check
 	minLimit  time.Duration // minimal time between 2 actual server requests, internally set to 1/3 of offLimit
 	license   string        // license identification string
-	surl      *url.URL      // server url entry point
+	surl      string        // server  entry point
 	ticker    *time.Ticker  // Ticker to trigger automatic checks. minLimit does not apply here.
 	done      chan bool     // signal end of process to all concurrent goroutines by closing this channel. Never send data to it !
 }
@@ -39,8 +38,7 @@ func New(conf Configuration) *Client {
 	c.ssid = c.rnd.Int()
 
 	c.license = url.PathEscape(conf.License)
-	c.surl, c.lastError = url.Parse(conf.ServerURL)
-	c.surl.Path = strings.Join([]string{c.surl.Path, c.license}, "/")
+	c.surl = conf.ServerURL + "/" + c.license
 
 	c.done = make(chan bool)
 
@@ -107,8 +105,8 @@ func (c *Client) Check() {
 // checkServer sends the Get query to the server and verify response is valid.
 // it should never be called synchroneously to avoid freezing the application.
 func (c *Client) checkServer() {
-	resp, err := http.Get(c.surl.String())
-	if resp != nil {
+	resp, err := http.Get(c.surl)
+	if err != nil && resp != nil {
 		fmt.Printf("Server responded : %s\n", resp.Status)
 	} else {
 		fmt.Printf("Server error : %v\n", err)

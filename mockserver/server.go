@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-// New constructs a mock server.
+// New constructs a mock server on the specified local port.
 // Start it by calling LitenAndServe() and then Close() it of send a /quit request.
-func New(addr string) *http.Server {
-	svr := &http.Server{}
-	svr.Addr = ":8080"
+func New(port int) *http.Server {
+	svr := new(http.Server)
+	svr.Addr = fmt.Sprintf(":%d", port)
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/quit", func(w http.ResponseWriter, r *http.Request) {
